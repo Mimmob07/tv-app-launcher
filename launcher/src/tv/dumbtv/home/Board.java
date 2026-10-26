@@ -42,13 +42,19 @@ final class Board extends ViewGroup {
     Theme theme;
     Config cfg;
     Backdrop backdrop;
+    final boolean screensaver;
     private final List<Widget> widgets = new ArrayList<>();
     private final List<int[]> cells = new ArrayList<>();
     private String built;
     private boolean shown;
 
     Board(Context c) {
+        this(c, false);
+    }
+
+    Board(Context c, boolean screensaver) {
         super(c);
+        this.screensaver = screensaver;
         setClipChildren(false);
         setClipToPadding(false);
     }

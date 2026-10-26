@@ -99,6 +99,9 @@ elif command == 'getprop sys.boot_completed':
     print(1)
 elif command == 'cmd package help':
     print('Package manager (package) commands:\n  path [--user USER_ID] PACKAGE')
+elif command == 'cmd package query-services --brief -a android.service.dreams.DreamService':
+    if 'tv.dumbtv.home' in apps and state.get('widget_dream', True):
+        print('tv.dumbtv.home/.Screensaver')
 elif words[:2] == ['pm', 'path']:
     if words[2] in apps:
         print(f'package:/system/app/{words[2]}.apk')

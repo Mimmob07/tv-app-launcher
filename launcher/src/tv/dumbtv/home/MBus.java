@@ -51,7 +51,7 @@ import javax.crypto.spec.SecretKeySpec;
  * looking them up; mbus.demo=on, made-up arrivals to place the widget before there is a key.
  * The lookup walks every route's stops once and keeps what it found in the
  * app's files, so it does not run again until mbus.stop changes. Arrivals refresh every
- * {@link #FRESH_MS} while the home screen shows, never in the background.
+ * {@link #FRESH_MS} while the home screen or screensaver shows, never in the background.
  */
 final class MBus {
     static final long FRESH_MS = 30_000L, RETRY_MS = 120_000L, STALE_MS = 5 * 60_000L;

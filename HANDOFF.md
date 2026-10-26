@@ -33,7 +33,7 @@ this work, started on a local branch named `hyrule-home`):
 M-Bus credentials are in the ignored `launcher/themes/home.local.conf`, not in Java source
 or the tracked seed config.
 
-Validation: 104 Python script tests, four Java host tests (including request-signature and
+Validation: 113 Python script tests, four Java host tests (including request-signature and
 UTC-date checks), shell syntax, catalog validation, and the release manifest passed. The
 installer undo tests passed after its config-file change. Final on-TV `verify.sh`
 passed with 46 packages disabled, working DNS blocks, personalDNSfilter VPN, bound HOME guard
@@ -42,6 +42,16 @@ six-day forecast in all four themes, with no launcher errors in logcat.
 
 Normal sleep behavior is restored: `adb shell svc power stayon false` reset
 `stay_on_while_plugged_in` to `0` after testing.
+
+The screensaver is now `tv.dumbtv.home/.Screensaver`: the same live widgets and theme
+background, filling the screen without the app dock or controls. The first remote press
+dismisses it. The TV's five-minute idle and fourteen-minute sleep timers are unchanged.
+`launcher/screensaver.sh` selects it and saves the previous selection on the TV;
+`launcher/screensaver.sh --undo`, `launcher/install.sh --undo` and `scripts/restore.sh`
+restore that selection. Native automatic idle startup and remote dismissal were tested.
+The hourly weather strip reserves separate font-measured bands for time labels, icons and
+temperatures, with a clear gap below each icon. Home and screensaver layouts were visually
+checked in Hyrule, Landscape, Minecraft and Matrix after the spacing fix.
 
 ## Next steps
 
@@ -58,7 +68,8 @@ Normal sleep behavior is restored: `adb shell svc power stayon false` reset
    the TV's theme. Copy the file separately when moving computers. Live API checks confirmed
    CCTC stops C250 (Chemistry) and C251 (Ruthven Museum). The owner now wants only northbound
    arrivals: the local patch sets `mbus.direction=Northbound`, and the wide card shows up to
-   six arrivals in two columns of three (balanced when fewer are available). Narrow forecast
+   six arrivals in two columns of three on home, or eight in two columns of four in the
+   screensaver (balanced when fewer are available). Narrow forecast
    cards now show six days in two rows of three.
 3. Time zone: the TV is on America/Chicago (set automatically, probably from the building's
    network) while the household is in Ann Arbor (Eastern). The owner fixes it in the TV's

@@ -21,6 +21,7 @@ sh_() { adb_ shell "$@" </dev/null; }
 installed() { sh_ pm path "$1" 2>/dev/null | grep -q '^package:'; }
 # shellcheck disable=SC1091
 source ../scripts/home.sh
+source ../scripts/screensaver.sh
 
 mode=release
 case ${1:-} in
@@ -75,6 +76,7 @@ sha256() {
 }
 
 if [[ $mode == undo ]]; then
+  restore_widget_screensaver
   # force-stop also keeps the Fire OS 6 Keeper from restarting at the next boot.
   sh_ am force-stop $PKG >/dev/null 2>&1 || true
   sh_ appops set $PKG GET_USAGE_STATS default >/dev/null 2>&1 || true

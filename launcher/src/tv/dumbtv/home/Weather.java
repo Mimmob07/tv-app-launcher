@@ -34,7 +34,7 @@ import java.util.concurrent.Executors;
  * something to draw right after a reboot.
  *
  * home.conf: weather.place (the name shown), weather.lat and weather.lon (decimal degrees),
- * weather.units (f or c). Refreshes every {@link #FRESH_MS} while the home screen is showing,
+ * weather.units (f or c). Refreshes every {@link #FRESH_MS} while the home screen or screensaver is showing,
  * and never in the background.
  */
 final class Weather {

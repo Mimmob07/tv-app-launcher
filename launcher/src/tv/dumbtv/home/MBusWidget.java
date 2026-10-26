@@ -13,7 +13,8 @@ import java.util.Map;
 /**
  * The next University of Michigan buses at one stop (the Central Campus Transit Center unless
  * mbus.stop says otherwise): route, where it is headed, and how soon. A direction filter
- * uses two columns of up to three arrivals each on a wide card. See {@link MBus}.
+ * uses two columns of up to three arrivals each on a wide home card, or four each in the
+ * full-screen screensaver. See {@link MBus}.
  */
 final class MBusWidget extends Widget {
     private final Runnable changed = this::invalidate;
@@ -91,7 +92,8 @@ final class MBusWidget extends Widget {
             String name = direction.toUpperCase(Locale.getDefault()) + (bus.stale() ? " · OFFLINE" : "");
             c.drawText(name, a.right, y, heading);
             List<MBus.Arrival> arrivals = selected;
-            int count = Math.min(6, arrivals.size()), split = (count + 1) / 2;
+            int rows = board.screensaver ? 4 : 3;
+            int count = Math.min(rows * 2, arrivals.size()), split = (count + 1) / 2;
             float gap = dp(20), width = (a.width() - gap) / 2;
             RectF left = new RectF(a.left, top, a.left + width, a.bottom);
             RectF right = new RectF(a.right - width, top, a.right, a.bottom);
@@ -140,7 +142,8 @@ final class MBusWidget extends Widget {
         TextPaint mins = paint(t.display, compact ? 18 : 20, t.text);
         mins.setTextAlign(Paint.Align.RIGHT);
         Paint chip = new Paint(Paint.ANTI_ALIAS_FLAG);
-        float row = compact ? Math.min(dp(40), col.height() / 3) : dp(34);
+        int rows = board.screensaver ? 4 : 3;
+        float row = compact ? Math.min(dp(40), col.height() / rows) : dp(34);
         float chipW = dp(compact ? 34 : 46), chipH = dp(compact ? 22 : 24);
         float textGap = dp(compact ? 8 : 12);
         for (MBus.Arrival a : list) {

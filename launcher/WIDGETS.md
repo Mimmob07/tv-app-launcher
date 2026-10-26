@@ -38,7 +38,7 @@ adb push home.conf /sdcard/Android/media/tv.dumbtv.home/home.conf
 | `mbus` | 7x3 | next University of Michigan buses at one stop, one column per direction | `mbus.key` (required), `mbus.signing-key` (website client), `mbus.stop`, `mbus.stops`, `mbus.direction`, `mbus.title`, `mbus.demo=on` |
 
 The weather comes from [Open-Meteo](https://open-meteo.com) (free, no account, no key). It
-refreshes every 15 minutes while the home screen is showing, never in the background, and the
+refreshes every 15 minutes while the home screen or screensaver is showing, never in the background, and the
 last answer is kept on the TV so the widgets fill in at once after a reboot.
 
 The buses come from the Magic Bus real-time system (Clever Devices BusTime API v3 at
@@ -58,17 +58,41 @@ when moving to another computer. A website update may rotate its client credenti
 
 On first use the widget looks through every route's
 stops for names containing `mbus.stop` (default `Central Campus Transit Center|CCTC`), keeps
-the stop ids it found, then asks for arrivals on the home screen's minute tick (with a
+the stop ids it found, then asks for arrivals on the home screen or screensaver's minute tick (with a
 30-second freshness guard). `mbus.stops=C250,C251` skips the lookup and pins the verified
 CCTC Chemistry and Ruthven Museum stops. `mbus.direction=Northbound` shows only northbound
-arrivals, arranged in two columns of up to three buses each on a wide card. The earliest
-arrivals read down the left column, then down the right; fewer than six are balanced between
+arrivals, arranged in two columns of up to three buses each on a wide home card, or four
+buses each in the full-screen screensaver. The earliest
+arrivals read down the left column, then down the right; fewer arrivals are balanced between
 the columns. Omit the direction filter to show both directions. `mbus.demo=on` shows made-up buses, marked SAMPLE,
 for placing the widget before the key arrives. With the bus widget, a layout that fits
 everything is `widgets=time:5x3,weather:7x3,mbus:7x3,forecast:5x3` (a 3-row weather card drops
 its hourly strip).
 
 Weather and buses are the launcher's only network use.
+
+## Screensaver
+
+The screensaver uses the same widgets, theme, picture rotation and live data as the home
+screen, expanded to fill the screen. It has no app row, inputs, Options or Settings controls.
+The first remote press dismisses it without opening an app.
+
+After installing a source build, select it with:
+
+```sh
+./launcher/screensaver.sh
+```
+
+It keeps the TV's existing idle and sleep timeouts. The previous screensaver selection and
+enabled setting are saved on the TV. To put them back:
+
+```sh
+./launcher/screensaver.sh --undo
+```
+
+Both commands accept `--dry-run`. `./launcher/install.sh --undo` and `./scripts/restore.sh`
+also restore the earlier screensaver when this one is still selected. A later selection or
+disable made in the TV's settings is preserved.
 
 ## Adding a widget
 

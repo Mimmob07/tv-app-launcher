@@ -51,6 +51,17 @@ class LauncherUndoTest(unittest.TestCase):
         _, settings = self.undo({"secure/enabled_accessibility_services": f"example.reader/.Service:{GUARD}"})
         self.assertEqual(settings["secure/enabled_accessibility_services"], "example.reader/.Service")
 
+    def test_widget_screensaver_selection_is_restored(self):
+        old = "com.amazon.ftv.screensaver/.app.services.ScreensaverService"
+        _, settings = self.undo({"secure/screensaver_components": "tv.dumbtv.home/.Screensaver",
+                                 "secure/screensaver_enabled": "1",
+                                 "secure/dumbtv_screensaver_saved": "1",
+                                 "secure/dumbtv_before_screensaver_components": old,
+                                 "secure/dumbtv_before_screensaver_enabled": "0"})
+        self.assertEqual(settings["secure/screensaver_components"], old)
+        self.assertEqual(settings["secure/screensaver_enabled"], "0")
+        self.assertNotIn("secure/dumbtv_screensaver_saved", settings)
+
     def test_android14_undoes_the_device_config_value(self):
         # Android 12+ keeps min_futurity in DeviceConfig. The global setting is undone as
         # well, because installs before that split wrote it on these TVs too.

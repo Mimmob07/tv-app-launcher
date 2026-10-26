@@ -98,7 +98,7 @@ final class WeatherWidget extends Widget {
         if (!strip) return;
         List<Weather.Hour> next = Weather.upcoming(r, 6, 3, System.currentTimeMillis());
         if (next.isEmpty()) return;
-        float stripTop = rowTop + rowH + dp(14);
+        float stripTop = rowTop + rowH + dp(4);
         rule(c, a.left, a.right, stripTop);
         float slot = a.width() / next.size();
         TextPaint when = label(12, t.muted);
@@ -107,17 +107,24 @@ final class WeatherWidget extends Widget {
         deg.setTextAlign(Paint.Align.CENTER);
         boolean h24 = "24h".equals(cfg().get(Config.CLOCK))
                 || "auto".equals(cfg().get(Config.CLOCK)) && DateFormat.is24HourFormat(getContext());
-        float left = a.bottom - stripTop - dp(10);
-        float glyph = Math.min(slot * 0.5f, left * 0.42f);
+        // Reserve the full text heights before placing the icons. Theme faces have different
+        // ascenders and descenders; anchoring an icon to the hour's baseline can overlap the
+        // temperature below it, particularly with Cinzel and Monocraft.
+        float timeY = stripTop + dp(6) - when.ascent();
+        float tempY = a.bottom - deg.descent();
+        float iconTop = timeY + when.descent() + dp(4);
+        float iconBottom = tempY + deg.ascent() - dp(8);
+        float glyph = Math.max(0, Math.min(slot * 0.5f, iconBottom - iconTop));
+        // Pixel glyphs round to a 16-unit grid; round down so that grid also fits its band.
+        if (t.pixel && glyph >= 16) glyph = (float) Math.floor(glyph / 16) * 16;
         for (int i = 0; i < next.size(); i++) {
             Weather.Hour h = next.get(i);
             float cx = a.left + slot * (i + 0.5f);
             String label = DateFormat.format(h24 ? "HH:mm" : "h a", new Date(h.time)).toString()
                     .toUpperCase(Locale.getDefault());
-            float ty = stripTop + dp(10) - when.ascent();
-            c.drawText(label, cx, ty, when);
-            Glyphs.draw(c, h.code, h.day, cx, ty + dp(8) + glyph / 2, glyph, t);
-            c.drawText(r.deg(h.temp), cx, a.bottom - deg.descent(), deg);
+            c.drawText(label, cx, timeY, when);
+            Glyphs.draw(c, h.code, h.day, cx, (iconTop + iconBottom) / 2, glyph, t);
+            c.drawText(r.deg(h.temp), cx, tempY, deg);
         }
     }
 }
