@@ -7,6 +7,7 @@ import android.graphics.drawable.StateListDrawable;
 import android.media.tv.TvInputManager;
 import android.os.Bundle;
 import android.text.SpannableString;
+import android.text.TextUtils;
 import android.text.Spanned;
 import android.text.style.ForegroundColorSpan;
 import android.view.Gravity;
@@ -49,7 +50,7 @@ public final class Options extends Activity {
         list.addView(title);
 
         for (Config.Choice c : Config.CHOICES) list.addView(choice(c));
-        list.addView(action("Next wallpaper", () -> {
+        list.addView(action("Next picture", () -> {
             cfg.nextWallpaper();
             refresh();
         }));
@@ -65,14 +66,15 @@ public final class Options extends Activity {
         TextView about = Ui.text(this, 13, Ui.FAINT, Ui.MEDIUM);
         about.setLineSpacing(0, 1.4f);
         about.setPadding(dp(16), dp(28), 0, 0);
+        String media = "/sdcard/Android/media/" + getPackageName() + "/";
         about.setText("Settings file: " + cfg.dir + "/" + Config.FILE
-                + "\nOne wallpaper: name it exactly wallpaper.jpg (or .png) and put it in that folder"
-                + "\nSeveral wallpapers: put them in " + Config.WALLPAPERS + "/ with any names, and pick a rotation"
-                + "\nThen pick Background › Image file or Adaptive wallpaper tint. No permission is needed"
-                + "\nOn Fire OS 8 adb cannot reach that folder; use /sdcard/Android/media/"
-                + getPackageName() + "/ instead"
-                + "\nAdaptive wallpaper tint shows graphite until you add a wallpaper"
-                + "\nNo internet permission. No tracking, no ads, no accounts.");
+                + " (on Fire OS 8 push it to " + media + Config.FILE + ")"
+                + "\nWidgets: " + cfg.get(Board.KEY, Board.DEFAULT)
+                + "  (widgets= in the settings file; ids: " + TextUtils.join(", ", Widgets.ALL.keySet()) + ")"
+                + "\nTheme pictures: " + media + "themes/<theme>/, with an optional credits.txt"
+                + "\nYour wallpapers: " + media + Config.WALLPAPERS + "/, then Background › Your wallpapers"
+                + "\nWeather: weather.place, weather.lat and weather.lon in the settings file"
+                + "\nNetwork use: the weather (api.open-meteo.com) and, with a key, the M-Bus widget. No tracking, no ads.");
         list.addView(about);
 
         setContentView(scroll);
@@ -109,7 +111,7 @@ public final class Options extends Activity {
             String text = c.name(cfg.get(c));
             if (c == Config.ACCENT) {
                 SpannableString s = new SpannableString("●  " + text);
-                s.setSpan(new ForegroundColorSpan(cfg.accent()), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                s.setSpan(new ForegroundColorSpan(accent()), 0, 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 value.setText(focused ? "‹  " : "");
                 value.append(s);
                 if (focused) value.append("  ›");
@@ -118,8 +120,7 @@ public final class Options extends Activity {
             }
             value.setTextColor(focused ? Ui.TEXT : Ui.MUTED);
             boolean off = (c == Config.DIM || c == Config.ROTATE)
-                    && !"image".equals(cfg.get(Config.BACKGROUND))
-                    && !"adaptive-tint".equals(cfg.get(Config.BACKGROUND))
+                    && "black".equals(cfg.get(Config.BACKGROUND))
                     || c == Config.SWITCH && "off".equals(cfg.get(Config.INPUTS));
             row.setAlpha(off ? 0.4f : 1f);
         };
@@ -168,9 +169,13 @@ public final class Options extends Activity {
     private void style(View row) {
         StateListDrawable bg = new StateListDrawable();
         bg.addState(new int[] {android.R.attr.state_focused},
-                Ui.round((cfg.accent() & 0x00FFFFFF) | 0x33000000, dp(10)));
+                Ui.round((accent() & 0x00FFFFFF) | 0x33000000, dp(10)));
         bg.addState(new int[0], Ui.round(0x00000000, dp(10)));
         row.setBackground(bg);
+    }
+
+    private int accent() {
+        return cfg.accent(Theme.of(this, cfg.get(Config.THEME)));
     }
 
     private TextView label(String text) {

@@ -2,6 +2,12 @@
 
 A home screen for Fire TV that does one job: show your apps and your HDMI inputs.
 
+> **This branch (hyrule-home)** adds a widget board and themes: the top 80% of the screen holds
+> widgets (time, weather, forecast, memory), the bottom 20% one scrolling row of apps and inputs,
+> over Hyrule (Breath of the Wild) or Landscape (photographs) pictures. The weather is its only
+> network use. [WIDGETS.md](WIDGETS.md) covers arranging and writing widgets and adding themes.
+> Some of what follows describes upstream's layout and options (rows, grid, tile sizes).
+
 <p align="center">
   <img src="../docs/assets/screens/home.png" alt="dumbtv home: a clock, an Apps row and an Inputs row" width="720">
 </p>

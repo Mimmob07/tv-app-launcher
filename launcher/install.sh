@@ -138,6 +138,26 @@ case $out in
 esac
 echo "installed $PKG"
 
+# Theme pictures and settings are not in the APK: they go to the app's media folder, which adb
+# can write on every Fire OS (Android 11 closes Android/data to it). launcher/themes/<id>/ holds
+# a theme's pictures (and its credits.txt); launcher/themes/home.conf, when present, is pushed
+# once as the settings to start from.
+MEDIA=/sdcard/Android/media/$PKG
+for theme in themes/*/; do
+  [[ -d $theme ]] || continue
+  name=$(basename "$theme")
+  sh_ mkdir -p "$MEDIA/themes/$name" >/dev/null
+  n=0
+  for f in "$theme"*; do
+    [[ -f $f ]] || continue
+    adb_ push "$f" "$MEDIA/themes/$name/" >/dev/null 2>&1 && n=$((n + 1))
+  done
+  echo "theme $name: $n files"
+done
+if [[ -f themes/home.conf ]]; then
+  adb_ push themes/home.conf "$MEDIA/home.conf" >/dev/null 2>&1 && echo "settings: themes/home.conf"
+fi
+
 sh_ dumpsys deviceidle whitelist +$PKG >/dev/null
 
 # Fire OS 6.7 refuses third-party accessibility services (A11yAuthorizer), so the Guard

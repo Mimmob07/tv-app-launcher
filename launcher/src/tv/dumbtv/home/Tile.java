@@ -13,15 +13,19 @@ import android.text.TextPaint;
 import android.text.TextUtils;
 import android.view.View;
 
-/** A card drawn in one pass: banner, or icon plus name, or an input name; focus ring on top. */
+/**
+ * A card drawn in one pass: banner, or icon plus name, or an input name; focus ring on top, with
+ * corner brackets outside it when the theme has ornaments. Names of banner apps are not drawn
+ * here: the dock shows the focused tile's name above the row.
+ */
 final class Tile extends View {
     private static final float FOCUS_SCALE = 1.08f;
 
     final Item item;
     final String kind;
     private final CharSequence title;
-    private final int cardW, cardH, labelH;
-    private final boolean labelAlways, labelOnFocus;
+    private final int cardW, cardH;
+    private final boolean brackets;
     private final float radius, stroke;
     private final RectF card = new RectF();
     private final Path clip = new Path();
@@ -29,12 +33,12 @@ final class Tile extends View {
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint ring = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint dot = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint bracket = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final TextPaint inner = new TextPaint(Paint.ANTI_ALIAS_FLAG);
-    private final TextPaint under = new TextPaint(Paint.ANTI_ALIAS_FLAG);
     private boolean moving;
 
     Tile(Context c, Item item, String kind, CharSequence title, int cardW, int cardH,
-            String labels, int accent) {
+            int accent, Theme theme) {
         super(c);
         this.item = item;
         this.kind = kind;
@@ -42,25 +46,23 @@ final class Tile extends View {
         this.cardW = cardW;
         this.cardH = cardH;
         boolean app = Catalog.APPS.equals(kind);
-        labelH = app ? Ui.dp(c, 26) : 0;
-        labelAlways = "always".equals(labels);
-        labelOnFocus = "focus".equals(labels);
-        radius = Ui.dp(c, 10);
-        stroke = Ui.dp(c, 2.5f);
+        brackets = theme.ornaments;
+        radius = Ui.dp(c, theme.tileRadius);
+        stroke = Ui.dp(c, theme.bevel ? 3.5f : 2.5f);
 
         fill.setColor(app ? Ui.SURFACE : 0xFF17181B);
         ring.setStyle(Paint.Style.STROKE);
         ring.setStrokeWidth(stroke);
         ring.setColor(accent);
+        bracket.setStyle(Paint.Style.STROKE);
+        bracket.setStrokeCap(Paint.Cap.SQUARE);
+        bracket.setStrokeWidth(Ui.dp(c, 2));
+        bracket.setColor(accent);
         dot.setColor(0xFF34C759);
         inner.setColor(Ui.TEXT);
-        inner.setTypeface(Ui.MEDIUM);
+        inner.setTypeface(theme.label);
         inner.setTextAlign(Paint.Align.CENTER);
-        inner.setTextSize(Ui.dp(c, app ? 14 : 17));
-        under.setColor(Ui.TEXT);
-        under.setTypeface(Ui.MEDIUM);
-        under.setTextAlign(Paint.Align.CENTER);
-        under.setTextSize(Ui.dp(c, 13));
+        inner.setTextSize(Ui.dp(c, app ? 12 : 15));
 
         setFocusable(true);
         setClickable(true);
@@ -75,7 +77,7 @@ final class Tile extends View {
 
     @Override
     protected void onMeasure(int widthSpec, int heightSpec) {
-        setMeasuredDimension(cardW, cardH + labelH);
+        setMeasuredDimension(cardW, cardH);
     }
 
     @Override
@@ -131,10 +133,27 @@ final class Tile extends View {
             canvas.drawRoundRect(half, half, cardW - half, cardH - half, radius - half, radius - half, ring);
         }
         if (moving) drawArrows(canvas);
-        boolean label = banner != null && (labelAlways || labelOnFocus && isFocused());
-        if (labelH > 0 && label) {
-            drawLine(canvas, under, cardW / 2f, cardH + labelH - Ui.dp(getContext(), 6));
-        }
+        if (brackets && isFocused() && !moving) drawBrackets(canvas);
+    }
+
+    /** L-shaped marks just outside each corner, like a selection frame in Breath of the Wild. */
+    private void drawBrackets(Canvas canvas) {
+        float out = Ui.dp(getContext(), 5), len = Ui.dp(getContext(), 11);
+        float l = -out, t = -out, r = cardW + out, b = cardH + out;
+        arrow.reset();
+        arrow.moveTo(l, t + len);
+        arrow.lineTo(l, t);
+        arrow.lineTo(l + len, t);
+        arrow.moveTo(r - len, t);
+        arrow.lineTo(r, t);
+        arrow.lineTo(r, t + len);
+        arrow.moveTo(r, b - len);
+        arrow.lineTo(r, b);
+        arrow.lineTo(r - len, b);
+        arrow.moveTo(l + len, b);
+        arrow.lineTo(l, b);
+        arrow.lineTo(l, b - len);
+        canvas.drawPath(arrow, bracket);
     }
 
     private void drawLine(Canvas canvas, TextPaint paint, float x, float baseline) {

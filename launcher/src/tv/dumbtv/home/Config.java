@@ -56,42 +56,36 @@ final class Config {
         }
     }
 
-    static final Choice ACCENT = new Choice("accent", "Accent color", "blue",
-            new String[] {"white", "blue", "cyan", "green", "amber", "red", "pink", "violet"},
-            new String[] {"White", "Blue", "Cyan", "Green", "Amber", "Red", "Pink", "Violet"});
-    static final Choice TILES = new Choice("tiles", "Tile size", "medium",
-            new String[] {"small", "medium", "large"},
-            new String[] {"Small", "Medium", "Large"});
-    static final Choice LAYOUT = new Choice("layout", "Layout", "rows",
-            new String[] {"rows", "grid"},
-            new String[] {"Rows", "Grid"});
+    /** The look of everything: see {@link Theme}. */
+    static final Choice THEME = new Choice("theme", "Theme", "hyrule", Theme.IDS, Theme.NAMES);
+    static final Choice ACCENT = new Choice("accent", "Focus color", "theme",
+            new String[] {"theme", "white", "blue", "cyan", "green", "amber", "red", "pink", "violet"},
+            new String[] {"Theme's", "White", "Blue", "Cyan", "Green", "Amber", "Red", "Pink", "Violet"});
     static final Choice ORDER = new Choice("order", "App order", "custom",
             new String[] {"custom", "recent"},
             new String[] {"Your order", "Recently used"});
-    static final Choice LABELS = new Choice("labels", "App names", "focus",
-            new String[] {"focus", "always", "never"},
-            new String[] {"On focus", "Always", "Never"});
     static final Choice CLOCK = new Choice("clock", "Clock", "auto",
             new String[] {"auto", "24h", "12h"},
             new String[] {"System", "24-hour", "12-hour"});
-    /** Free memory under the date, for TVs that are short of it. Shows only; frees nothing. */
-    static final Choice MEMORY = new Choice("memory", "Memory meter", "off",
-            new String[] {"off", "on"},
-            new String[] {"Hidden", "Shown"});
-    static final Choice INPUTS = new Choice("inputs", "Inputs row", "on",
+    /** For the weather widgets. */
+    static final Choice UNITS = new Choice("weather.units", "Temperature", "f",
+            new String[] {"f", "c"},
+            new String[] {"°F", "°C"});
+    static final Choice INPUTS = new Choice("inputs", "HDMI inputs", "on",
             new String[] {"on", "off"},
             new String[] {"Shown", "Hidden"});
     static final Choice SWITCH = new Choice("switch", "Open inputs with", "auto",
             new String[] {"auto", "tv", "home"},
             new String[] {"Automatic", "The TV's app", "dumbtv home"});
-    static final Choice BACKGROUND = new Choice("background", "Background", "black",
-            new String[] {"black", "graphite", "midnight", "image", "adaptive", "adaptive-tint"},
-            new String[] {"Black", "Graphite", "Midnight", "Image file", "Adaptive solid", "Adaptive wallpaper tint"});
-    static final Choice DIM = new Choice("dim", "Image dim", "40",
+    /** The theme's pictures, the owner's own wallpapers folder, or plain black. */
+    static final Choice BACKGROUND = new Choice("background", "Background", "theme",
+            new String[] {"theme", "image", "black"},
+            new String[] {"Theme pictures", "Your wallpapers", "Black"});
+    static final Choice DIM = new Choice("dim", "Picture dim", "20",
             new String[] {"0", "20", "40", "60", "80"},
             new String[] {"0%", "20%", "40%", "60%", "80%"});
 
-    static final Choice ROTATE = new Choice("rotate", "Wallpaper rotation", "off",
+    static final Choice ROTATE = new Choice("rotate", "Picture rotation", "hourly",
             new String[] {"off", "visit", "hourly", "daily", "daytime"},
             new String[] {"Off", "Every return home", "Every hour", "Every day", "By time of day"});
 
@@ -103,16 +97,15 @@ final class Config {
             new String[] {"off", "on"},
             new String[] {"Off", "On"});
 
-    static final Choice[] CHOICES = {ACCENT, TILES, LAYOUT, ORDER, LABELS, CLOCK, MEMORY, INPUTS, SWITCH, BACKGROUND, DIM, ROTATE, LOCK};
+    static final Choice[] CHOICES = {THEME, BACKGROUND, ROTATE, DIM, ACCENT, CLOCK, UNITS, ORDER, INPUTS, SWITCH, LOCK};
 
     /** Folder of wallpapers, next to home.conf, that Background › Image file rotates through. */
     static final String WALLPAPERS = "wallpapers";
     private static final String OFFSET = "wallpaper.offset";
 
     private static final int[] ACCENTS = {
-        0xFFFFFFFF, 0xFF3D8BFF, 0xFF2BC4E8, 0xFF34C759, 0xFFFFB340, 0xFFFF5147, 0xFFFF5C9D, 0xFFA07CFF,
+        0, 0xFFFFFFFF, 0xFF3D8BFF, 0xFF2BC4E8, 0xFF34C759, 0xFFFFB340, 0xFFFF5147, 0xFFFF5C9D, 0xFFA07CFF,
     };
-    private static final int[] BACKGROUNDS = {0xFF000000, 0xFF141518, 0xFF0B1220, 0xFF000000, 0xFF141518, 0xFF141518};
 
     private static Config instance;
 
@@ -282,7 +275,8 @@ final class Config {
         save();
     }
 
-    int accent() {
+    /** The focus color: the theme's own unless Options › Focus color names one. */
+    int accent(Theme theme) {
         String v = values.get(ACCENT.key);
         if (v != null && v.startsWith("#")) {
             try {
@@ -291,11 +285,13 @@ final class Config {
                 // falls through to the named palette
             }
         }
-        return ACCENTS[Arrays.asList(ACCENT.values).indexOf(get(ACCENT))];
+        int named = ACCENTS[Arrays.asList(ACCENT.values).indexOf(get(ACCENT))];
+        return named == 0 ? theme.accent : named;
     }
 
-    int background() {
-        return BACKGROUNDS[Arrays.asList(BACKGROUND.values).indexOf(get(BACKGROUND))];
+    /** What shows before the wallpaper has loaded, and behind the HOME takeover. */
+    int cover() {
+        return "black".equals(get(BACKGROUND)) ? 0xFF000000 : Theme.cover(get(THEME));
     }
 
     /** Counts returns to the home screen, for the "visit" rotation. */
@@ -376,8 +372,63 @@ final class Config {
         }
     }
 
+    /** The theme's pictures: themes/&lt;id&gt;/ in the media folder, or in the app's own folder. */
+    List<File> themePictures(String theme) {
+        List<File> out = new ArrayList<>();
+        if (shared != null) addPictures(new File(shared, "themes/" + theme), out);
+        addPictures(new File(dir, "themes/" + theme), out);
+        Collections.sort(out, new Comparator<File>() {
+            @Override
+            public int compare(File a, File b) {
+                return a.getName().compareToIgnoreCase(b.getName());
+            }
+        });
+        return out;
+    }
+
+    /** The picture to show now, following Options › Background and › Picture rotation. */
     File wallpaper() {
-        List<File> pool = wallpapers();
+        String mode = get(BACKGROUND);
+        if ("black".equals(mode)) return null;
+        List<File> pool = "theme".equals(mode) ? themePictures(get(THEME)) : wallpapers();
+        File pick = pick(pool);
+        if (pick != null || "theme".equals(mode)) return pick;
+        for (String name : new String[] {"wallpaper.jpg", "wallpaper.jpeg", "wallpaper.png", "wallpaper.webp"}) {
+            File f = new File(dir, name);
+            if (f.isFile()) return f;
+            if (shared != null) {
+                File s = new File(shared, name);
+                if (s.isFile()) return s;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * The credit for a picture, from credits.txt next to it: one "file|credit" line per
+     * picture, and an optional "*|credit" line for the rest. Empty when there is none.
+     */
+    static String credit(File picture) {
+        if (picture == null) return "";
+        File list = new File(picture.getParentFile(), "credits.txt");
+        if (!list.isFile()) return "";
+        String all = "";
+        try (BufferedReader r = new BufferedReader(
+                new InputStreamReader(new FileInputStream(list), StandardCharsets.UTF_8))) {
+            for (String line; (line = r.readLine()) != null; ) {
+                int bar = line.indexOf('|');
+                if (bar <= 0) continue;
+                String name = line.substring(0, bar).trim();
+                if (name.equalsIgnoreCase(picture.getName())) return line.substring(bar + 1).trim();
+                if ("*".equals(name)) all = line.substring(bar + 1).trim();
+            }
+        } catch (IOException e) {
+            Log.w("dumbtv", "could not read " + list, e);
+        }
+        return all;
+    }
+
+    private File pick(List<File> pool) {
         if (!pool.isEmpty()) {
             long now = System.currentTimeMillis();
             long step;
@@ -401,14 +452,6 @@ final class Config {
             }
             int n = pool.size();
             return pool.get((int) (((step + offset()) % n + n) % n));
-        }
-        for (String name : new String[] {"wallpaper.jpg", "wallpaper.jpeg", "wallpaper.png", "wallpaper.webp"}) {
-            File f = new File(dir, name);
-            if (f.isFile()) return f;
-            if (shared != null) {
-                File s = new File(shared, name);
-                if (s.isFile()) return s;
-            }
         }
         return null;
     }

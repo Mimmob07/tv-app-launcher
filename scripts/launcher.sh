@@ -18,8 +18,8 @@ fi
 PKG=tv.dumbtv.home
 
 step "plan"
-note "install dumbtv home: open source, 54 KB, no internet permission, no ad ID"
-note "the prebuilt APK comes from this repo's GitHub release and is checksum-verified"
+note "install Hyrule Home (dumbtv home with widgets): open source, network only for the weather"
+note "built from launcher/ on this computer (Hyrule Home fork: themes and widgets)"
 if [[ $SDK -lt 28 ]]; then
   note "take over HOME: Keeper (UsageStats + moveTaskToFront, no accessibility)"
 else
@@ -32,7 +32,7 @@ if [[ $DRY_RUN == 1 ]]; then
 fi
 confirm "Replace the home screen on $SERIAL?" || die "cancelled"
 
-ADB=$ADB ADB_SERIAL=$SERIAL "$ROOT/launcher/install.sh" || die "launcher install failed (see above)"
+ADB=$ADB ADB_SERIAL=$SERIAL "$ROOT/launcher/install.sh" --build || die "launcher install failed (see above)"
 
 for _ in 1 2 3 4 5 6 7 8 9 10; do
   sleep 1

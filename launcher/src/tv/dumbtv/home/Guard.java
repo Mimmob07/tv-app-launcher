@@ -38,9 +38,19 @@ import android.view.accessibility.AccessibilityEvent;
  * Waking from standby resumes whatever was on screen without a new window event. If the last
  * window was Amazon's home screen, ours is brought up at once. Amazon's other launcher screens,
  * such as its settings grid, are left alone, as is a wake before any window was seen.
+ *
+ * On Fire OS 8 the Appstore's launcher entry forwards to a tab of Amazon's home
+ * (HomeActivity_vNext), which this service would replace at once. The home screen opens the
+ * Appstore's own home instead ({@link #APPSTORE_HOME}); where that is missing it pauses the
+ * takeover first, and while paused the Appstore's own windows do not end the pause. Fire OS sends
+ * its HOME-key broadcast only to holders of an Amazon permission, so there is no way to see HOME
+ * pressed on Amazon's home: from there, opening any app brings the takeover back.
  */
 public final class Guard extends AccessibilityService {
     static final String AMAZON = "com.amazon.tv.launcher";
+    static final String APPSTORE = "com.amazon.venezia";
+    /** The Appstore's own home screen, which does not go through Amazon's launcher. */
+    static final String APPSTORE_HOME = APPSTORE + ".ade.ADEHomeActivity";
     private static final String AMAZON_HOME = "com.amazon.tv.launcher.ui.HomeActivity_vNext";
     private static final long COVER_MAX_MS = 1500;
     private static final long REPEAT_MS = 1000;
@@ -61,6 +71,7 @@ public final class Guard extends AccessibilityService {
             if (!paused && onAmazonHome) launchWhenCovered();
         }
     };
+
 
     /** Lets Amazon's home stay on screen until the user leaves it. */
     static void pause() {
@@ -141,6 +152,7 @@ public final class Guard extends AccessibilityService {
         if (pkg == null) return;
         if (!AMAZON.contentEquals(pkg)) {
             if ("com.android.systemui".contentEquals(pkg) || "android".contentEquals(pkg)) return;
+            if (paused && APPSTORE.contentEquals(pkg)) return;
             onAmazonHome = false;
             paused = false;
             if (!getPackageName().contentEquals(pkg)) arrived(this);
@@ -188,7 +200,7 @@ public final class Guard extends AccessibilityService {
     /** The overlay window exists from service start; a GONE root keeps its surface hidden. */
     private void cover() {
         if (cover == null) return;
-        cover.setBackgroundColor(Config.get(this).background());
+        cover.setBackgroundColor(Config.get(this).cover());
         cover.setVisibility(View.VISIBLE);
         handler.removeCallbacks(uncover);
         handler.postDelayed(uncover, COVER_MAX_MS);
