@@ -33,20 +33,37 @@ adb push home.conf /sdcard/Android/media/tv.dumbtv.home/home.conf
 |---|---|---|---|
 | `time` | 5x4 | time, weekday, date | `clock=auto\|24h\|12h` |
 | `weather` | 7x4 | conditions now and the next 18 hours | `weather.place`, `weather.lat`, `weather.lon`, `weather.units=f\|c` |
-| `forecast` | 12x2 | up to six days | the same as `weather` |
+| `forecast` | 12x2 | up to six days; narrow, tall cards use two rows of three | the same as `weather` |
 | `memory` | 4x2 | free memory | none |
-| `mbus` | 7x3 | next University of Michigan buses at one stop, one column per direction | `mbus.key` (required), `mbus.stop`, `mbus.stops`, `mbus.title`, `mbus.demo=on` |
+| `mbus` | 7x3 | next University of Michigan buses at one stop, one column per direction | `mbus.key` (required), `mbus.signing-key` (website client), `mbus.stop`, `mbus.stops`, `mbus.direction`, `mbus.title`, `mbus.demo=on` |
 
 The weather comes from [Open-Meteo](https://open-meteo.com) (free, no account, no key). It
 refreshes every 15 minutes while the home screen is showing, never in the background, and the
 last answer is kept on the TV so the widgets fill in at once after a reboot.
 
 The buses come from the Magic Bus real-time system (Clever Devices BusTime API v3 at
-mbus.ltp.umich.edu). It needs your own free API key: request one from the Developer API page
-of mbus.ltp.umich.edu and set `mbus.key`. On first use the widget looks through every route's
+mbus.ltp.umich.edu). Set `mbus.key` to a developer API key, or use the public map's client
+key together with its `mbus.signing-key`. The website client requires `X-Date` and
+`X-Request-ID` (HMAC-SHA256 of the API path, encoded query and UTC date); the token alone
+returns "No API access permitted". Signed requests synchronize with the server's `gettime`
+endpoint once per refresh, so an incorrect TV clock or time zone does not break authentication.
+These client values were verified against the public map's
+[JavaScript bundle](https://mbus.ltp.umich.edu/main.eb1163d0abab9c11.js) on 2026-10-26.
+
+Keep credentials and the `widgets=` layout in `launcher/themes/home.local.conf` (git-ignored).
+When that file exists, `install.sh` pushes it instead of the seed `themes/home.conf`.
+Include only settings you want to change on an already configured TV: the launcher merges
+those keys and preserves the owner's theme and other options. Copy this local file separately
+when moving to another computer. A website update may rotate its client credentials.
+
+On first use the widget looks through every route's
 stops for names containing `mbus.stop` (default `Central Campus Transit Center|CCTC`), keeps
-the stop ids it found, then asks for arrivals every 30 seconds while the home screen shows.
-`mbus.stops=1234,5678` skips the lookup. `mbus.demo=on` shows made-up buses, marked SAMPLE,
+the stop ids it found, then asks for arrivals on the home screen's minute tick (with a
+30-second freshness guard). `mbus.stops=C250,C251` skips the lookup and pins the verified
+CCTC Chemistry and Ruthven Museum stops. `mbus.direction=Northbound` shows only northbound
+arrivals, arranged in two columns of up to three buses each on a wide card. The earliest
+arrivals read down the left column, then down the right; fewer than six are balanced between
+the columns. Omit the direction filter to show both directions. `mbus.demo=on` shows made-up buses, marked SAMPLE,
 for placing the widget before the key arrives. With the bus widget, a layout that fits
 everything is `widgets=time:5x3,weather:7x3,mbus:7x3,forecast:5x3` (a 3-row weather card drops
 its hourly strip).

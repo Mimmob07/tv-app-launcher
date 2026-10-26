@@ -26,26 +26,40 @@ this work, started on a local branch named `hyrule-home`):
 
 | | On the TV | In the repository |
 |---|---|---|
-| Launcher | an earlier build: Hyrule + Landscape themes, time/weather/forecast widgets, Appstore fix | newer: + Minecraft and Matrix themes, M-Bus widget, lighter blur, fixes |
-| Theme pictures | `themes/hyrule`, `themes/landscape` | + `themes/minecraft` |
-| Settings | Landscape theme picked by the owner on the TV | `launcher/themes/home.conf` is the seed |
+| Launcher | current build, including Minecraft/Matrix themes and live signed M-Bus requests; `verify.sh` passed | matches the deployed source |
+| Theme pictures | Hyrule, Landscape and Minecraft installed | same three folders |
+| Settings | Matrix theme; time/weather/northbound CCTC arrivals/six-day forecast in two rows of three | `launcher/themes/home.conf` is the seed; ignored `home.local.conf` supplies M-Bus settings |
 
-Everything below is committed, including the files dumbtv upstream keeps out of git.
+M-Bus credentials are in the ignored `launcher/themes/home.local.conf`, not in Java source
+or the tracked seed config.
+
+Validation: 104 Python script tests, four Java host tests (including request-signature and
+UTC-date checks), shell syntax, catalog validation, and the release manifest passed. The
+installer undo tests passed after its config-file change. Final on-TV `verify.sh`
+passed with 46 packages disabled, working DNS blocks, personalDNSfilter VPN, bound HOME guard
+and a successful HOME-key takeover. Screen captures confirmed the northbound bus layout and
+six-day forecast in all four themes, with no launcher errors in logcat.
+
+Normal sleep behavior is restored: `adb shell svc power stayon false` reset
+`stay_on_while_plugged_in` to `0` after testing.
 
 ## Next steps
 
-1. Push the new build when the TV is on (see HANDOFF.local.md for the address):
+1. Future source updates can use the same installer (see HANDOFF.local.md for the address):
    ```sh
    adb connect <tv-ip>:5555
    ADB_SERIAL=<tv-ip>:5555 ./launcher/install.sh --build
    ```
    It updates in place (same signing key) and pushes all theme folders. The owner's settings
-   on the TV are kept; an unchanged `themes/home.conf` is not applied again.
-2. M-Bus widget: the owner requests a free key from the Developer API page of
-   mbus.ltp.umich.edu; then add `mbus.key=...` and `mbus` to `widgets=` (suggested layout in
-   WIDGETS.md) and push the settings file to `/sdcard/Android/media/tv.dumbtv.home/home.conf`.
-   It has only been tested with `mbus.demo=on`: check the real stop lookup and direction names
-   on the TV.
+   on the TV are kept; an unchanged settings patch is not applied again.
+2. M-Bus credentials are now in `launcher/themes/home.local.conf` (git-ignored), with the
+   four-widget layout. The public map's key also requires its signing key and timestamped
+   HMAC headers; see WIDGETS.md. `install.sh` prefers this local settings patch so it preserves
+   the TV's theme. Copy the file separately when moving computers. Live API checks confirmed
+   CCTC stops C250 (Chemistry) and C251 (Ruthven Museum). The owner now wants only northbound
+   arrivals: the local patch sets `mbus.direction=Northbound`, and the wide card shows up to
+   six arrivals in two columns of three (balanced when fewer are available). Narrow forecast
+   cards now show six days in two rows of three.
 3. Time zone: the TV is on America/Chicago (set automatically, probably from the building's
    network) while the household is in Ann Arbor (Eastern). The owner fixes it in the TV's
    settings (Amazon's `com.amazon.device.settings.action.TIME_ZONE` screen); the clock widget

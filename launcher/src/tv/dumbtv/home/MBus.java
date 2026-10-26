@@ -20,7 +20,10 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -29,14 +32,19 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
 /**
  * Next arrivals at one University of Michigan bus stop, from the Magic Bus real-time system
- * (Clever Devices BusTime, API v3, mbus.ltp.umich.edu). Needs a personal API key: request one
- * from the Developer API page of mbus.ltp.umich.edu and put it in home.conf as mbus.key.
+ * (Clever Devices BusTime, API v3, mbus.ltp.umich.edu). Set mbus.key in home.conf.
+ * The public website's client key also needs mbus.signing-key for its request headers;
+ * personal developer keys can leave that setting empty.
  *
  * home.conf: mbus.key; mbus.stop, the stop's name or names to look for, "|"-separated
  * (default: Central Campus Transit Center|CCTC); mbus.stops, stop ids to use instead of
@@ -149,9 +157,10 @@ final class MBus {
             return;
         }
         String apiKey = cfg.get("mbus.key", "");
+        String signingKey = cfg.get("mbus.signing-key", "");
         String names = cfg.get("mbus.stop", DEFAULT_STOP);
         List<String> pinned = cfg.list("mbus.stops");
-        String want = apiKey + "|" + names + "|" + pinned;
+        String want = apiKey + "|" + signingKey + "|" + names + "|" + pinned;
         long now = System.currentTimeMillis();
         if (!want.equals(key)) {
             key = want;
@@ -169,11 +178,12 @@ final class MBus {
             Report got = null;
             String trouble = "";
             try {
-                List<String> stops = pinned.isEmpty() ? stops(apiKey, names) : pinned;
+                Client client = new Client(apiKey, signingKey);
+                List<String> stops = pinned.isEmpty() ? stops(client, names) : pinned;
                 if (stops.isEmpty()) {
                     trouble = "No stop named " + names.replace("|", " or ");
                 } else {
-                    got = parse(call(apiKey, "getpredictions", "stpid", join(stops, 10), "top", "30"), colors);
+                    got = parse(client.call("getpredictions", "stpid", join(stops, 10), "top", "30"), colors);
                     got.fetched = System.currentTimeMillis();
                 }
             } catch (IOException | JSONException | RuntimeException e) {
@@ -193,21 +203,21 @@ final class MBus {
     }
 
     /** The stop ids whose names match {@code names}, from the cache or by asking every route. */
-    private List<String> stops(String apiKey, String names) throws IOException, JSONException {
+    private List<String> stops(Client client, String names) throws IOException, JSONException {
         List<String> cached = loadCache(names);
         if (cached != null) return cached;
         Set<String> found = new LinkedHashSet<>();
         String[] wanted = names.toLowerCase(Locale.ROOT).split("\\|");
-        JSONArray routes = call(apiKey, "getroutes").optJSONArray("routes");
+        JSONArray routes = client.call("getroutes").optJSONArray("routes");
         for (int i = 0; routes != null && i < routes.length(); i++) {
             JSONObject rt = routes.getJSONObject(i);
             String route = rt.getString("rt");
             colors.put(route, color(rt.optString("rtclr")));
-            JSONArray dirs = call(apiKey, "getdirections", "rt", route).optJSONArray("directions");
+            JSONArray dirs = client.call("getdirections", "rt", route).optJSONArray("directions");
             for (int d = 0; dirs != null && d < dirs.length(); d++) {
                 JSONObject dir = dirs.getJSONObject(d);
                 String id = dir.has("id") ? dir.getString("id") : dir.optString("dir");
-                JSONArray stops = call(apiKey, "getstops", "rt", route, "dir", id).optJSONArray("stops");
+                JSONArray stops = client.call("getstops", "rt", route, "dir", id).optJSONArray("stops");
                 for (int s = 0; stops != null && s < stops.length(); s++) {
                     JSONObject stop = stops.getJSONObject(s);
                     String name = stop.optString("stpnm").toLowerCase(Locale.ROOT);
@@ -222,8 +232,52 @@ final class MBus {
         return out;
     }
 
+    /** One refresh uses server time plus monotonic elapsed time, independent of the TV clock. */
+    private static final class Client {
+        private final String apiKey, signingKey;
+        private long serverTime, started;
+
+        Client(String apiKey, String signingKey) throws IOException, JSONException {
+            this.apiKey = apiKey;
+            this.signingKey = signingKey;
+            if (!signingKey.isEmpty()) {
+                serverTime = call("gettime", "unixTime", "true").getLong("tm");
+                started = System.nanoTime();
+            }
+        }
+
+        JSONObject call(String request, String... params) throws IOException, JSONException {
+            long now = serverTime + (System.nanoTime() - started) / 1_000_000L;
+            return MBus.call(apiKey, "gettime".equals(request) ? "" : signingKey, now, request, params);
+        }
+    }
+
+    /** The public website signs the API path, query and UTC date with HMAC-SHA256. */
+    static String requestDate(long millis) {
+        SimpleDateFormat date = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.US);
+        date.setTimeZone(TimeZone.getTimeZone("GMT"));
+        return date.format(new Date(millis));
+    }
+
+    static String requestId(URL url, String date, String signingKey) throws IOException {
+        String path = url.getFile();
+        int api = path.indexOf("/api/");
+        if (api < 0) throw new IOException("Missing BusTime API path");
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(signingKey.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            byte[] hash = mac.doFinal((path.substring(api) + date).getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder();
+            for (byte b : hash) hex.append(String.format(Locale.ROOT, "%02x", b & 0xff));
+            return hex.toString();
+        } catch (GeneralSecurityException e) {
+            throw new IOException("Could not sign BusTime request", e);
+        }
+    }
+
     /** One API call; BusTime's own error answers become exceptions, except "no arrivals". */
-    private static JSONObject call(String apiKey, String request, String... params) throws IOException, JSONException {
+    private static JSONObject call(String apiKey, String signingKey, long now, String request, String... params)
+            throws IOException, JSONException {
         StringBuilder url = new StringBuilder(API).append(request).append("?format=json&key=")
                 .append(URLEncoder.encode(apiKey, "UTF-8"));
         for (int i = 0; i + 1 < params.length; i += 2) {
@@ -233,6 +287,12 @@ final class MBus {
         conn.setConnectTimeout(10_000);
         conn.setReadTimeout(15_000);
         conn.setRequestProperty("User-Agent", "dumbtv-home");
+        conn.setRequestProperty("Accept", "application/json");
+        if (!signingKey.isEmpty()) {
+            String date = requestDate(now);
+            conn.setRequestProperty("X-Date", date);
+            conn.setRequestProperty("X-Request-ID", requestId(conn.getURL(), date, signingKey));
+        }
         String body;
         try {
             if (conn.getResponseCode() != 200) throw new IOException("HTTP " + conn.getResponseCode());
@@ -275,6 +335,17 @@ final class MBus {
             r.arrivals.add(a);
         }
         return r;
+    }
+
+    /** An optional direction filter, matched without regard to the API's capitalization. */
+    static List<Arrival> inDirection(List<Arrival> arrivals, String direction) {
+        String wanted = direction.trim();
+        if (wanted.isEmpty()) return arrivals;
+        List<Arrival> out = new ArrayList<>();
+        for (Arrival a : arrivals) {
+            if (wanted.equalsIgnoreCase(a.direction)) out.add(a);
+        }
+        return out;
     }
 
     /** The arrivals grouped by direction, in order of each direction's first bus. */

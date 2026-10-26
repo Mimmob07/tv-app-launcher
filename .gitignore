@@ -8,6 +8,7 @@ launcher/*.keystore
 .DS_Store
 *.dumbtv
 launcher/build/
+launcher/themes/home.local.conf
 video/
 __pycache__/
 *.pyc

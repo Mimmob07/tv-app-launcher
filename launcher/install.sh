@@ -154,8 +154,12 @@ for theme in themes/*/; do
   done
   echo "theme $name: $n files"
 done
-if [[ -f themes/home.conf ]]; then
-  adb_ push themes/home.conf "$MEDIA/home.conf" >/dev/null 2>&1 && echo "settings: themes/home.conf"
+settings=themes/home.conf
+# A local patch contains only the settings to change on an already configured TV, including
+# API credentials. Config merges these keys; the owner's theme and other options stay put.
+[[ -f themes/home.local.conf ]] && settings=themes/home.local.conf
+if [[ -f $settings ]]; then
+  adb_ push "$settings" "$MEDIA/home.conf" >/dev/null 2>&1 && echo "settings: $settings"
 fi
 
 sh_ dumpsys deviceidle whitelist +$PKG >/dev/null
