@@ -4,9 +4,8 @@ For whoever picks this up next, person or coding agent. Read this first, then
 [launcher/WIDGETS.md](launcher/WIDGETS.md). Identifiers (the TV's address, the network) are in
 [HANDOFF.local.md](HANDOFF.local.md).
 
-**This repository is private and must stay private**: it holds Nintendo's and Mojang's
-screenshots, the TV's settings snapshot and the household's details. The launcher's signing key
-(`launcher/release.keystore`) is deliberately not in git; see below.
+This repository is public. The launcher's signing key, the TV's settings snapshot and the
+household's details are git-ignored and live only on the owner's computer; see below.
 
 ## What this is
 
@@ -99,13 +98,12 @@ checked in Hyrule, Landscape, Minecraft and Matrix after the spacing fix.
 - **Memory:** about 120 MB with a photo wallpaper (the full picture plus its blur), against 60
   to 70 MB for stock dumbtv home on a black background. The TV had about 750 MB free.
 
-## Private files (upstream ignores them)
+## Local files (git-ignored, copy them by hand)
 
 | Path | Why |
 |---|---|
-| `launcher/release.keystore` (**not in git**) | signs the APK. Copy it to a new computer by hand (AirDrop, USB, or a password manager's file attachment). Without it the next install needs `adb uninstall tv.dumbtv.home`, which wipes the launcher's settings on the TV |
-| `launcher/themes/hyrule/`, `launcher/themes/minecraft/` | Nintendo's and Mojang's screenshots: fine on the owner's TV, not ours to publish |
-| `launcher/themes/home.conf` | the household's settings, weather location included |
+| `launcher/release.keystore` | signs the APK. Copy it to a new computer by hand (AirDrop, USB, or a password manager's file attachment). Without it the next install needs `adb uninstall tv.dumbtv.home`, which wipes the launcher's settings on the TV |
+| `launcher/themes/home.local.conf` | M-Bus credentials and the deployed widget layout |
 | `dumbtv.conf`, `report/` | dumbtv's answers, and the settings snapshot `scripts/restore.sh` needs to undo stage 1 exactly |
 | `HANDOFF.local.md` | identifiers |
 

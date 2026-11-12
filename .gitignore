@@ -1,9 +1,9 @@
-# This repository is PRIVATE on purpose and must stay that way: it carries the launcher's
-# signing key, Nintendo's and Mojang's screenshots, the TV's settings snapshot and the
-# household's details, so the project can be picked up on another computer. dumbtv upstream
-# ignores report/ and dumbtv.conf; they are tracked here.
-# The signing key is not: copy it to a new computer by hand (see HANDOFF.md).
+# Household and device details stay out of this public repository (see HANDOFF.md):
+# the signing key, dumbtv's answers, the TV's settings snapshot and local identifiers.
 launcher/*.keystore
+dumbtv.conf
+report/
+HANDOFF.local.md
 *.log
 .DS_Store
 *.dumbtv
